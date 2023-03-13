@@ -1,7 +1,10 @@
 use borsh::BorshDeserialize;
 use lazy_static::lazy_static;
-use std::io;
-use tokio::net::{TcpListener, TcpStream};
+use std::net::SocketAddr;
+use tokio::{
+    io::AsyncReadExt,
+    net::{TcpListener, TcpStream},
+};
 use xor_mailer::{Mailer, MailerConfig};
 use xor_mailer_common::Envelope;
 
@@ -15,47 +18,46 @@ async fn main() {
 
     println!("Running on socket 127.0.0.1:6363");
 
-    loop {
-        let (socket, socket_addr) = listener.accept().await.unwrap();
-        dbg!("RECEIVING");
-
+    while let Ok((stream, _socket_addr)) = listener.accept().await {
         tokio::spawn(async move {
-            process_socket(socket).await.unwrap();
-        });
+            match handle_client(stream).await {
+                Ok(addr) => {
+                    println!("DISCONNECTED device[{}:{}]", addr.ip(), addr.port())
+                }
+                Err(error) => {
+                    eprintln!("{:?}", error);
+                }
+            }
+        })
+        .await
+        .unwrap();
     }
 }
 
-async fn process_socket(stream: TcpStream) -> anyhow::Result<()> {
-    let mut stream_data = Vec::<u8>::new();
+async fn handle_client(mut stream: TcpStream) -> anyhow::Result<SocketAddr> {
+    println!("↓[CONNECTED] device[{}]", stream.peer_addr()?);
+
+    let mut buffer = [0; 4096];
+    let mut stream_data: Vec<u8> = Vec::new();
+    let mut bytes_read: usize;
 
     loop {
-        println!("ONE");
-        // Wait for the socket to be readable
-        stream.readable().await?;
+        bytes_read = stream.read(&mut buffer).await?;
 
-        // Creating the buffer **after** the `await` prevents it from
-        // being stored in the async task.
-        let mut buffer = [0u8; 4096];
-
-        // Try to read data, this may still fail with `WouldBlock`
-        // if the readiness event is a false positive.
-        match stream.try_read(&mut buffer) {
-            Ok(0) => break,
-            Ok(byte_read_length) => {
-                stream_data.append(&mut buffer[..byte_read_length].to_owned());
-
-                break;
-            }
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
-                continue;
-            }
-            Err(e) => {
-                return Err(e.into());
-            }
+        if bytes_read == 0 {
+            let peer = stream.peer_addr()?;
+            return Ok(peer);
         }
-    }
 
-    dbg!(stream_data.len());
+        // Check if the current stream is less than the buffer capacity, if so all data has been received
+        if buffer[..bytes_read].len() < 4096 {
+            stream_data.append(&mut buffer[..bytes_read].to_owned());
+
+            break;
+        }
+        // Append data to buffer
+        stream_data.append(&mut buffer[..bytes_read].to_owned());
+    }
 
     let envelope = Envelope::try_from_slice(&stream_data)?;
 
@@ -65,5 +67,5 @@ async fn process_socket(stream: TcpStream) -> anyhow::Result<()> {
         .await
         .unwrap();
 
-    Ok(())
+    Ok(stream.peer_addr()?)
 }
