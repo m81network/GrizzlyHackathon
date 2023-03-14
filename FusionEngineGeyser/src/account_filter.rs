@@ -16,13 +16,50 @@ pub fn exec_command(command: &ServiceCommand, tx_signature: &str) {
             date,
             tx: _, // FIXME Remove this as is not used
         } => {
-            html_builder(customer_name, email, subject, tx_signature, date, items);
+            email_builder(customer_name, email, subject, tx_signature, date, items);
         }
+        ServiceCommand::ThinClientWebVersion {
+            validator: _,
+            customer_name,
+            items,
+            tx: _,
+            date,
+        } => html_builder(customer_name, tx_signature, date, items),
         _ => todo!(),
     }
 }
 
-pub fn html_builder(
+pub fn html_builder(name: &str, tx: &str, date: &str, items: &[BillableItem]) {
+    use borsh::BorshSerialize;
+    use smol::io::BufWriter;
+    use validator_document_service::TemplateBuilder;
+
+    let mut builder = TemplateBuilder::new();
+    builder
+        .add_customer(name)
+        .add_date(date)
+        .add_tx(tx)
+        .add_items(items.to_vec());
+
+    let as_html_string = builder.to_template_1().unwrap();
+
+    let tx_html = (tx.to_owned(), as_html_string);
+    let stream_data = tx_html.try_to_vec().unwrap();
+
+    smol::block_on(async {
+        use smol::{io::AsyncWriteExt, net::TcpStream};
+        let mut stream = TcpStream::connect("127.0.0.1:6365").await.unwrap();
+
+        let mut buf_writer = BufWriter::with_capacity(4096, &mut stream);
+        buf_writer.write_all(&stream_data).await.unwrap();
+
+        buf_writer.flush().await.unwrap();
+
+        log::info!("WRITTEN_HTML: {:?}", stream_data.len());
+    })
+}
+
+pub fn email_builder(
     name: &str,
     email: &str,
     subject: &str,
@@ -59,7 +96,7 @@ pub fn html_builder(
 
         buf_writer.flush().await.unwrap();
 
-        log::info!("WRITTEN: {:?}", stream_data.len());
+        log::info!("WRITTEN_MAIL_DATA: {:?}", stream_data.len());
     })
 }
 

@@ -11,6 +11,14 @@ pub enum ServiceCommand {
         service_id: String,
         tx: String,
         date: String,
+        items: Vec<BillableItem>,
+    },
+    ThinClientWebVersion {
+        validator: Pubkey,
+        customer_name: String,
+        items: Vec<BillableItem>,
+        tx: String,
+        date: String,
     },
     TxEmail {
         validator: Pubkey,
@@ -30,5 +38,6 @@ pub enum ServiceCommand {
         service_id: String, //HTML String,
         tx: String,
         date: String,
+        items: Vec<BillableItem>,
     },
 }

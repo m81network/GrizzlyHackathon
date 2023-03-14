@@ -20,7 +20,6 @@ fn process_instruction(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    msg!("Accounts: {:?}", &accounts);
     msg!("ProgramID: {:?}", &program_id);
 
     let account_info_iter = &mut accounts.iter();
@@ -32,7 +31,6 @@ fn process_instruction(
     let system_account = next_account_info(account_info_iter)?;
 
     let command = ServiceCommand::try_from_slice(instruction_data)?;
-    msg!("Command: {:?}", command);
 
     assert!(payer.is_writable);
     assert!(!recipient.is_signer);

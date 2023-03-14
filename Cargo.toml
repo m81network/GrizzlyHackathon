@@ -6,4 +6,5 @@ members = [
     "Geyser-Service-Client",
     "Geyser-Service-Program",
     "ValidatorMailService",
+    "ValidatorCDNService"
 ]
