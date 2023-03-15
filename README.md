@@ -5,12 +5,18 @@
 
 **FusionDrive** is a business facing project aimed at increasing the revenues of Solana validators, enabling better decentralization of Web3 projects and accelerating the move to web3 by businesses. This repository contains a demo showing how this is made possible by using the Geyser Plugin Interface for Solana.
 
-Further details can be found in the presentation at [https://github.com/m81network/GrizzlyHackathon/blob/master/Documentation/FusionDrive-M81-Network-Solana-Grizzly_Hackathon.pdf](https://github.com/m81network/GrizzlyHackathon/blob/master/Documentation/FusionDrive-M81-Network-Solana-Grizzly_Hackathon.pdf)
+Further details can be found in the presentation at [https://raw.githubusercontent.com/m81network/GrizzlyHackathon/master/Documentation/FusionDrive-M81-Network-Solana-Grizzly_Hackathon.pdf](https://raw.githubusercontent.com/m81network/GrizzlyHackathon/master/Documentation/FusionDrive-M81-Network-Solana-Grizzly_Hackathon.pdf)
 
 ---
 
 ### How to run the project
+Clone this repo and switch to it's root directory
+```sh
+$ git clone https://github.com/m81network/GrizzlyHackathon
 
+$ cd GrizzlyHackathon
+```
+Ensure you have a C compiler install like `GCC` and `pkg-config` which are necessary to compile most Rust crates and projects.
 ##### Install Rust
 You need the Rust toolchain to compile this project which you can install by following instructions for your platform at:
 [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install) .
@@ -28,7 +34,17 @@ cargo install bore-cli
 
 ##### Install Solana Cli Tools
 Solana's `solana-test-validator` and `sbf` tools are required to run the project. Install solana by following the instructions at:
-[https://docs.solana.com/cli/install-solana-cli-tools](https://docs.solana.com/cli/install-solana-cli-tools)
+[https://docs.solana.com/cli/install-solana-cli-tools](https://docs.solana.com/cli/install-solana-cli-tools) .
+
+This project is compiled against Solana Cli Tools version `1.15.2` so ensure this is the Solana version you have otherwise the solana-test-validator might crash due to incompatible versions between the tools and the Rust toolchain version 1.66.1.
+For Unix systems
+```sh
+sh -c "$(curl -sSfL https://release.solana.com/v1.15.2/install)"
+```
+Fow Windows systems
+```sh
+cmd /c "curl https://release.solana.com/v1.15.2/solana-install-init-x86_64-pc-windows-msvc.exe --output C:\solana-install-tmp\solana-install-init.exe --create-dirs"
+```
 
 #### The `Config` Directory
 The `Config` directory in this repository provides a set of configuration files to run the geyser plugin and mail server if you wish to send an example email for the demo.
@@ -65,11 +81,11 @@ email = "email_where_to_send_the_transaction_receipt" # Example "support@m81.net
 
 #### Building and Running the Project
 
-1. Switch to the `Geyser-Service-Program` directory and build the solana program. Building the S0lana program first generates the program keypair which is necessary for other steps to work.
+1. Switch to the `Geyser-Service-Program` directory and build the solana program. Building the Solana program first generates the program keypair which is necessary for other steps to work.
     ```sh
     cargo build-sbf
     ```
-
+    This will install Solana EBPF tools, compile the program and generate a program keypair.
 2. Compile the Geyser plugin and start the
     - Compile the plugin
     ```sh
@@ -79,20 +95,26 @@ email = "email_where_to_send_the_transaction_receipt" # Example "support@m81.net
     ```sh
     solana-test-validator --geyser-plugin-config ./FusionEngineGeyserPluginConfig.json
     ```
-3. Switch to the `Geyser-Service-Program` directory and deploy the solana program. 
+3. Perform a Solana airdrop on the public key of the user in the `user_keypair.json` by first setting the cluster configuration fron default to `localhost` since that is where the `solana-test-validator` is running from.
     ```sh
-    solana program deploy ../target/deploy/geyser_service_program.so
+    $ solana config set --url localhost
     ```
-4. Switch to the root directory of the project. Configure the `Config/mailer.toml` file with your SMTP mail settings and run the Email service from another terminal and keep it running in the foreground
+    ```sh
+    $ solana airdrop 10 -k Config/user_keypair.json
+    ```
+4. In the root directory deploy the solana program. 
+    ```sh
+    solana program deploy ./target/deploy/geyser_service_program.so -k Config/user_keypair.json
+    ```
+5. Switch to the root directory of the project. Configure the `Config/mailer.toml` file with your SMTP mail settings and run the Email service from another terminal and keep it running. This is step is optional if you want to send a demo of the receipts to your email address of choice.
 
     ```sh
     cargo run -p validator-mail-service -- Config/mailer.toml
     ```
-5. Perform a Solana airdrop on the public key of the user in the `user_keypair.json`
+6. Switch to the `ValidatorCDNService` directory and start the Validator CDN Service from another terminal and keep it running.
     ```sh
-    solana airdrop 10 -k Config/user_keypair.json
+    cd ValidatorCDNService/
     ```
-6. Start the Validator CDN Service from another terminal inside root directory of this repository.
     ```sh
     cargo run
     ```
@@ -110,15 +132,15 @@ email = "email_where_to_send_the_transaction_receipt" # Example "support@m81.net
     ip = "bore.pub:33019" # The socket address you copied from step 7
     email = "support@m81.network"
    ```
-
-9.  Run the RPC client in the `Geyser-Service-Client` directory to demo the email receipt notification and check your email address when the client prints a transaction signature.
+9. Swith to the `Geyser-Service-Client` directory
+10. Run the RPC client in the `Geyser-Service-Client` directory to demo the email receipt notification and check your email address when the client prints a transaction signature.
     ```sh
     cargo run -p geyser-service-client -- mail
     ```
 
-10.  Run the RPC client in the `Geyser-Service-Client` directory to demo the CDN network that can be used to display HTML receipts on a thin client
+11. Run the RPC client in the `Geyser-Service-Client` directory to demo the CDN network that can be used to display HTML receipts on a thin client
 ```sh
-cargo run -p geyser-service-client -- mail
+cargo run -p geyser-service-client -- cdn
 ```
 
 ##### That's it.
