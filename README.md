@@ -111,6 +111,7 @@ email = "email_where_to_send_the_transaction_receipt" # Example "support@m81.net
     ```sh
     cargo run -p validator-mail-service -- Config/mailer.toml
     ```
+    **WARNING:** Ensure the SMTP port you added to the `smtp_port` field `Config/mailer.toml` file (as outline in the section `Config File` item 1 in the list) is not blocked since you won't receive the email. For most computers, ensure that port `587` for SMTP is not blocked.
 6. Switch to the `ValidatorCDNService` directory and start the Validator CDN Service from another terminal and keep it running.
     ```sh
     cd ValidatorCDNService/
@@ -137,11 +138,12 @@ email = "email_where_to_send_the_transaction_receipt" # Example "support@m81.net
     ```sh
     cargo run -p geyser-service-client -- mail
     ```
+    **REMEMBER STEP 5:** Ensure that the SMTP port 587 or the one you chose is not blocked otherwise you won't receive the email receipt.
 
 11. Run the RPC client in the `Geyser-Service-Client` directory to demo the CDN network that can be used to display HTML receipts on a thin client
-```sh
-cargo run -p geyser-service-client -- cdn
-```
+    ```sh
+    cargo run -p geyser-service-client -- cdn
+    ```
 
 ##### That's it.
 You have shown how the Solana validator and nodes network can be used to decentralize web2 business facing services at the same time increasing earnings for validator and node operators using micro-transactions.
